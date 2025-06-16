@@ -1,28 +1,34 @@
 # Traffic Flow Prediction
 
-## 🎯 Problem Definition
-**SDG Goal:** Sustainable Cities and Communities
+## Problem Definition
 
-**Problem:** Urban traffic congestion leads to pollution, delays, and decreased quality of life.
+SDG Goal: Sustainable Cities and Communities
+Problem: Urban traffic congestion leads to pollution, delays, and decreased quality of life.
+Solution: Predict traffic volume using supervised machine learning with historical data (weather, time, date, holidays) to enable better traffic system planning.
 
-**Solution:** Predict traffic volume using supervised machine learning with historical data (weather, time, date, holidays) to enable better traffic system planning.
+## Machine Learning Approach
 
-## 🤖 Machine Learning Approach
 ### Model Options
+
 - Linear Regression (baseline)
 - Random Forest Regressor (better accuracy)
 - Neural Network (optional advanced version)
 
-## 📊 Dataset & Tools
+## Dataset & Tools
+
 ### Dataset
+
 Using Metro Interstate Traffic Volume dataset from Kaggle
-#### Features:
+
+#### Features
+
 - Date/time
 - Weather (temperature, rain, snow, clouds)
 - Holiday
 - Traffic volume (target)
 
 ### Tools
+
 - Google Colab
 - Python libraries:
   - pandas
@@ -31,15 +37,17 @@ Using Metro Interstate Traffic Volume dataset from Kaggle
   - seaborn
   - tensorflow (optional)
 
-## 💻 Implementation Steps
+## Implementation Steps
 
 ### 1. Setup & Data Upload
+
 ```python
 from google.colab import files
 uploaded = files.upload()
 ```
 
 ### 2. Data Preprocessing
+
 ```python
 import pandas as pd
 
@@ -51,12 +59,14 @@ df['day'] = df['date_time'].dt.dayofweek
 ```
 
 ### 3. Feature Engineering
+
 ```python
 features = df[['temp', 'rain_1h', 'snow_1h', 'clouds_all', 'hour', 'day']]
 target = df['traffic_volume']
 ```
 
 ### 4. Model Training
+
 ```python
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
@@ -70,6 +80,7 @@ print("MAE:", mean_absolute_error(y_test, preds))
 ```
 
 ### 5. Visualization
+
 ```python
 import matplotlib.pyplot as plt
 
@@ -81,29 +92,32 @@ plt.title("Traffic Volume Prediction")
 plt.show()
 ```
 
-## 🤝 Ethical Considerations
-- **Bias:** Ensuring diverse data representation across seasons and times
-- **Privacy:** No personal data collection or usage
-- **Fairness:** Supporting better transport infrastructure and reducing pollution
+## Ethical Considerations
 
-## 📦 Deliverables
-1. **Code Notebook (.ipynb)**
+- Bias: Ensuring diverse data representation across seasons and times
+- Privacy: No personal data collection or usage
+- Fairness: Supporting better transport infrastructure and reducing pollution
+
+## Deliverables
+
+1. Code Notebook (.ipynb)
    - Fully commented implementation
    - Step-by-step explanations
 
-2. **Technical Report**
+2. Technical Report
    - SDG: 11 (Sustainable Cities)
    - ML Technique: Supervised Learning (Random Forest)
    - Results Analysis
    - Ethical Considerations
 
-3. **Project Documentation**
+3. Project Documentation
    - GitHub Repository
    - Implementation Screenshots
    - Technical Article
    - 5-Slide Pitch Deck
 
-## 🔗 Getting Started
+## Getting Started
+
 1. Clone this repository
 2. Upload the notebook to Google Colab
 3. Follow the implementation steps
