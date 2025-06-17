@@ -1,32 +1,39 @@
 # 🚗 Traffic Flow Prediction
 
-## Overview
+## 🌍 Project for SDG 11: Sustainable Cities and Communities
 
-An AI-powered traffic volume prediction system using machine learning to help create more sustainable cities and communities.
+This project is part of the **PLP Academy Week 2 Assignment – AI for Sustainable Development**. It directly addresses **UN Sustainable Development Goal 11** by using machine learning to analyze and predict urban traffic flow, aiming to reduce congestion, support smart transport planning, and improve quality of life in cities.
 
-### 🎯 Key Objectives
+---
+
+## 🎯 Key Objectives
 
 - Predict traffic patterns using historical data
-- Reduce urban congestion
-- Support smart city planning
-- Contribute to SDG 11: Sustainable Cities
+- Reduce urban congestion and emissions
+- Support sustainable urban mobility
+- Inform smart city infrastructure decisions
+
+---
 
 ## 🛠️ Tech Stack
 
 - Python 3.9+
 - Scikit-learn
 - Pandas
-- TensorFlow (optional)
-- Google Colab
+- TensorFlow (optional for deep learning model)
+- Google Colab / Jupyter Notebook
+
+---
 
 ## 📊 Dataset
 
-Using Metro Interstate Traffic Volume dataset featuring:
+Using the [Metro Interstate Traffic Volume dataset](https://archive.ics.uci.edu/ml/datasets/Metro+Interstate+Traffic+Volume) which contains:
 
-- Weather conditions
-- Time/Date information
-- Holiday indicators
-- Traffic volume measurements
+- Hourly traffic volume measurements
+- Weather conditions (temp, rain, snow, clouds)
+- Time-based indicators (hour, weekday, holiday)
+
+---
 
 ## 🚀 Quick Start
 
@@ -39,56 +46,49 @@ cd traffic_flow_prediction
 pip install -r requirements.txt
 
 # Launch Jupyter notebook
-jupyter notebook Traffic_Flow_Analysis.ipynb
-```
+jupyter notebook notebooks/Traffic_Flow_Analysis.ipynb
 
-## 📈 Model Architecture
+📈 Model Architecture
+Three ML models were tested and compared:
 
-We implement three approaches:
+✅ Linear Regression – as a simple baseline
 
-1. Linear Regression (baseline)
-2. Random Forest (primary model)
-3. Neural Network (experimental)
+✅ Random Forest Regressor – primary production model
 
-## 📋 Project Structure
+✅ Neural Network – experimental model using TensorFlow
 
-``
+📋 Project Structure
+
 traffic_flow_prediction/
-│
 ├── data/
 │   └── Metro_Interstate_Traffic_Volume.csv
-│
 ├── notebooks/
 │   └── Traffic_Flow_Analysis.ipynb
-│
 ├── src/
 │   ├── preprocessing.py
 │   ├── model.py
 │   └── utils.py
-│
 ├── tests/
 │   └── test_model.py
-│
 ├── README.md
 └── requirements.txt
-``
 
-## 🔍 Features
+🔍 Features
+⏱️ Real-time hourly traffic volume prediction
 
-- Real-time traffic prediction
-- Weather impact analysis
-- Holiday traffic patterns
-- Time-based volume forecasting
+🌧️ Weather impact forecasting
 
-## 📝 Usage Example
+📅 Holiday traffic variation detection
 
-```python
+🕓 Hourly & daily congestion pattern insights
+
+🧪 Usage Example
 from src.model import TrafficPredictor
 
 # Initialize predictor
 predictor = TrafficPredictor()
 
-# Make prediction
+# Example input features
 features = {
     'temp': 25.0,
     'rain_1h': 0.0,
@@ -96,30 +96,38 @@ features = {
     'hour': 14,
     'day': 2
 }
+
+# Make a traffic volume prediction
 predicted_volume = predictor.predict(features)
-```
 
-## 📊 Results
+📊 Results
+🔍 MAE: 450 vehicles/hour
 
-- MAE: 450 vehicles/hour
-- R² Score: 0.85
-- Prediction time: <100ms
+🎯 R² Score: 0.85
 
-## 🤝 Contributing
+⚡ Average prediction time: <100ms
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
+🧠 Ethical & Social Impact
+✅ Inclusivity: The model can help identify high-congestion areas in under-served neighborhoods to improve transit access equitably.
 
-## 📫 Contact
+⚠️ Bias Awareness: Traffic data may not represent informal or pedestrian transit—future iterations should include more diverse mobility data.
 
-Project Link: [https://github.com/KerryNK/traffic_flow_prediction](https://github.com/KerryNK/traffic_flow_prediction)
+🌱 Sustainability: By forecasting peak traffic, city planners can reduce carbon emissions by rerouting or adjusting transport frequency.
 
-## 📜 License
+🤝 Community Benefit: Can be shared with local governments or mobility apps to improve urban planning for everyone.
 
-MIT License © 2025 Kerry🧸💕
-Project built for the PLP Academy
+🎓 Contribution Guide
+Fork the repository
 
-## SDGAssignment
+Create a new branch: git checkout -b feature/AmazingFeature
+
+Commit your changes: git commit -m 'Add AmazingFeature'
+
+Push to the branch: git push origin feature/AmazingFeature
+
+Open a pull request ✅
+
+📫 Contact
+Project Repo: https://github.com/KerryNK/traffic_flow_prediction
+
+Made with ❤️ by Kerry🧸💕 for the PLP Academy AI for SDG Challenge
