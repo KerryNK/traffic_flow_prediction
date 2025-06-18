@@ -87,8 +87,7 @@ print(f"R² Score: {r2_score(y_test, y_pred):.2f}")
 
 # Plot feature importance
 importance = pd.DataFrame({
-    'feature': features,
-    'importance': model.feature_importances_
+
 }).sort_values('importance', ascending=False)
 
 plt.figure(figsize=(10, 6))
