@@ -1,4 +1,3 @@
-from curses.ascii import alt
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -63,13 +62,20 @@ def main():
         df = predictor.load_data(uploaded_file)
         st.sidebar.success("Data loaded successfully!")
 
-        # Training section
+        # Data overview
         st.header("📊 Data Overview")
         col1, col2 = st.columns(2)
         with col1:
             st.dataframe(df.head())
         with col2:
             st.write("Dataset Shape:", df.shape)
+
+        # Safe correlation heatmap toggle
+        if st.checkbox("📌 Show Correlation Heatmap"):
+            st.subheader("Feature Correlation Matrix")
+            fig_corr, ax = plt.subplots(figsize=(10, 8))
+            sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
+            st.pyplot(fig_corr)
 
         # Model training
         X = df[predictor.features]
@@ -81,7 +87,7 @@ def main():
                 model = predictor.train_model(X_train, y_train)
                 y_pred = model.predict(X_test)
 
-                #Show model performance metrics
+                # Metrics
                 mae = mean_absolute_error(y_test, y_pred)
                 r2 = r2_score(y_test, y_pred)
 
@@ -89,18 +95,14 @@ def main():
                 col1.metric("📊 Mean Absolute Error (MAE)", f"{mae:.2f}")
                 col2.metric("📈 R² Score", f"{r2:.2f}")
 
-
                 # Visualizations
                 st.header("📈 Model Performance")
-
-                # Actual vs Predicted
                 fig1 = go.Figure()
                 fig1.add_trace(go.Scatter(y=y_test[:100], name="Actual"))
                 fig1.add_trace(go.Scatter(y=y_pred[:100], name="Predicted"))
                 fig1.update_layout(title="Traffic Volume: Actual vs Predicted")
                 st.plotly_chart(fig1)
 
-                # Feature Importance
                 importance = pd.DataFrame({
                     'feature': predictor.features,
                     'importance': model.feature_importances_
@@ -110,7 +112,6 @@ def main():
                              title="Feature Importance")
                 st.plotly_chart(fig2)
 
-                # Save model
                 joblib.dump(model, 'models/traffic_model.pkl')
                 st.sidebar.success("Model trained and saved successfully!")
 
@@ -138,14 +139,9 @@ def main():
                 st.success(f"Predicted Traffic Volume: {prediction:.0f} vehicles/hour")
             except Exception as e:
                 st.error(f"Prediction failed: {e}")
+
     else:
         st.info("Please upload a traffic data CSV file to begin.")
-
-        if st.checkbox("📌 Show Correlation Heatmap"):
-           st.subheader("Feature Correlation Matrix")
-           fig_corr, ax = plt.subplots(figsize=(10, 8))
-           sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
-    st.pyplot(fig_corr)
 
 if __name__ == "__main__":
     main()
