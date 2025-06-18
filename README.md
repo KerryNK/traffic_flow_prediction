@@ -130,4 +130,8 @@ Open a pull request ✅
 📫 Contact
 Project Repo: https://github.com/KerryNK/traffic_flow_prediction
 
+![GitHub repo size](https://img.shields.io/github/repo-size/KerryNK/traffic_flow_prediction)
+
+![MIT license](https://img.shields.io/github/license/KerryNK/traffic_flow_prediction)
+
 Made with ❤️ by Kerry🧸💕 for the PLP Academy AI for SDG Challenge
