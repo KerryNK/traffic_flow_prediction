@@ -1,147 +1,98 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-import plotly.express as px
+import joblib
 import plotly.graph_objects as go
-from sklearn.metrics import mean_absolute_error, r2_score
-import seaborn as sns
-import matplotlib.pyplot as plt
 
-class TrafficPredictor:
-    def __init__(self):
-        self.model = None
-        self.features = [
-            'temp', 'rain_1h', 'clouds_all', 'hour', 'day',
-            'month', 'weekday', 'is_holiday'
-        ]
+# --- Helper Functions ---
 
-    @st.cache_data
-    def load_data(self, file):
-        df = pd.read_csv(file)
-        df['date_time'] = pd.to_datetime(df['date_time'])
-        df['hour'] = df['date_time'].dt.hour
-        df['day'] = df['date_time'].dt.day
-        df['month'] = df['date_time'].dt.month
-        df['weekday'] = df['date_time'].dt.weekday
-        df['is_holiday'] = df['holiday'].apply(lambda x: 1 if x != 'None' else 0)
-        return df
+@st.cache_data
+def load_data(uploaded_file):
+    df = pd.read_csv(uploaded_file)
+    df['date_time'] = pd.to_datetime(df['date_time'])
+    df['hour'] = df['date_time'].dt.hour
+    df['day'] = df['date_time'].dt.day
+    df['month'] = df['date_time'].dt.month
+    df['weekday'] = df['date_time'].dt.weekday
+    df['is_holiday'] = df['holiday'].apply(lambda x: 1 if x != 'None' else 0)
+    return df
 
-    @st.cache_resource
-    def train_model(self, X, y):
-        self.model = RandomForestRegressor(
-            n_estimators=100,
-            max_depth=15,
-            random_state=42
-        )
-        self.model.fit(X, y)
-        return self.model
+@st.cache_resource
+def train_model(X, y):
+    model = RandomForestRegressor(n_estimators=100, max_depth=15, random_state=42)
+    model.fit(X, y)
+    return model
 
-    def load_model(self, model_path='models/traffic_model.pkl'):
-        self.model = joblib.load(model_path)
-        return self.model
+def plot_actual_vs_pred(y_true, y_pred):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(y=y_true[:100], mode='lines', name='Actual'))
+    fig.add_trace(go.Scatter(y=y_pred[:100], mode='lines', name='Predicted'))
+    fig.update_layout(title="Traffic Volume: Actual vs Predicted", xaxis_title="Sample", yaxis_title="Traffic Volume")
+    st.plotly_chart(fig)
 
-    def predict(self, features):
-        if not self.model:
-            raise ValueError("Model not loaded or trained.")
-        return self.model.predict([features])[0]
+def plot_feature_importance(model, feature_names):
+    importances = model.feature_importances_
+    fig = go.Figure(go.Bar(
+        x=importances,
+        y=feature_names,
+        orientation='h',
+        marker=dict(color=importances, colorscale='Viridis')
+    ))
+    fig.update_layout(title="Feature Importance", xaxis_title="Importance", yaxis_title="Feature")
+    st.plotly_chart(fig)
 
-def main():
-    st.set_page_config(page_title="Traffic Flow Prediction", layout="wide")
-    st.title("🚗 Traffic Flow Prediction System")
+# --- Streamlit UI ---
 
-    predictor = TrafficPredictor()
+st.set_page_config(page_title="🚦 Traffic Flow Prediction", layout="wide")
+st.title("🚦 Traffic Flow Prediction App")
 
-    # Sidebar
-    st.sidebar.header("Model Controls")
-    uploaded_file = st.sidebar.file_uploader("Upload Traffic Data (CSV)", type="csv")
+st.sidebar.header("Upload and Controls")
+uploaded_file = st.sidebar.file_uploader("Upload Traffic Data CSV", type="csv")
 
-    if uploaded_file:
-        df = predictor.load_data(uploaded_file)
-        st.sidebar.success("Data loaded successfully!")
+if uploaded_file:
+    df = load_data(uploaded_file)
+    st.success("Data loaded successfully!")
+    st.write("### Data Sample", df.head())
 
-        # Data overview
-        st.header("📊 Data Overview")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.dataframe(df.head())
-        with col2:
-            st.write("Dataset Shape:", df.shape)
+    feature_cols = ['temp', 'rain_1h', 'clouds_all', 'hour', 'day', 'month', 'weekday', 'is_holiday']
+    X = df[feature_cols]
+    y = df['traffic_volume']
 
-        # Safe correlation heatmap toggle
-        if st.checkbox("📌 Show Correlation Heatmap"):
-            st.subheader("Feature Correlation Matrix")
-            fig_corr, ax = plt.subplots(figsize=(10, 8))
-            sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
-            st.pyplot(fig_corr)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Model training
-        X = df[predictor.features]
-        y = df['traffic_volume']
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    if st.sidebar.button("Train Model"):
+        with st.spinner("Training model..."):
+            model = train_model(X_train, y_train)
+            y_pred = model.predict(X_test)
+            st.success("Model trained!")
 
-        if st.sidebar.button("Train Model"):
-            with st.spinner("Training model..."):
-                model = predictor.train_model(X_train, y_train)
-                y_pred = model.predict(X_test)
+            st.write("### Model Performance")
+            st.write(f"**R² Score:** {model.score(X_test, y_test):.3f}")
+            st.write(f"**MAE:** {np.mean(np.abs(y_test - y_pred)):.2f}")
 
-                # Metrics
-                mae = mean_absolute_error(y_test, y_pred)
-                r2 = r2_score(y_test, y_pred)
+            plot_actual_vs_pred(y_test.values, y_pred)
+            plot_feature_importance(model, feature_cols)
 
-                col1, col2 = st.columns(2)
-                col1.metric("📊 Mean Absolute Error (MAE)", f"{mae:.2f}")
-                col2.metric("📈 R² Score", f"{r2:.2f}")
+    st.write("### Make a Prediction")
+    col1, col2 = st.columns(2)
+    with col1:
+        temp = st.slider("Temperature (°C)", -20.0, 40.0, 20.0)
+        rain = st.slider("Rain (mm)", 0.0, 50.0, 0.0)
+        clouds = st.slider("Cloud Coverage (%)", 0, 100, 50)
+        hour = st.slider("Hour", 0, 23, 12)
+    with col2:
+        day = st.slider("Day", 1, 31, 15)
+        month = st.slider("Month", 1, 12, 6)
+        weekday = st.slider("Weekday (0=Mon)", 0, 6, 3)
+        is_holiday = st.checkbox("Is Holiday", value=False)
 
-                # Visualizations
-                st.header("📈 Model Performance")
-                fig1 = go.Figure()
-                fig1.add_trace(go.Scatter(y=y_test[:100], name="Actual"))
-                fig1.add_trace(go.Scatter(y=y_pred[:100], name="Predicted"))
-                fig1.update_layout(title="Traffic Volume: Actual vs Predicted")
-                st.plotly_chart(fig1)
-
-                importance = pd.DataFrame({
-                    'feature': predictor.features,
-                    'importance': model.feature_importances_
-                }).sort_values('importance', ascending=True)
-
-                fig2 = px.bar(importance, x='importance', y='feature',
-                             title="Feature Importance")
-                st.plotly_chart(fig2)
-
-                joblib.dump(model, 'models/traffic_model.pkl')
-                st.sidebar.success("Model trained and saved successfully!")
-
-        # Prediction section
-        st.header("🎯 Make Predictions")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            temp = st.slider("🌡 Temperature (°C)", -20.0, 40.0, 20.0)
-            rain = st.slider("🌧 Rain (mm)", 0.0, 50.0, 0.0)
-            clouds = st.slider("☁️ Cloud Coverage (%)", 0, 100, 50)
-            hour = st.slider("🕓 Hour", 0, 23, 12)
-
-        with col2:
-            day = st.slider("📅 Day", 1, 31, 15)
-            month = st.slider("📆 Month", 1, 12, 6)
-            weekday = st.slider("🗓 Weekday", 0, 6, 3)
-            is_holiday = st.checkbox("🎉 Is Holiday")
-
-        if st.button("Predict"):
-            try:
-                predictor.load_model()
-                features = [temp, rain, clouds, hour, day, month, weekday, int(is_holiday)]
-                prediction = predictor.predict(features)
-                st.success(f"Predicted Traffic Volume: {prediction:.0f} vehicles/hour")
-            except Exception as e:
-                st.error(f"Prediction failed: {e}")
-
-    else:
-        st.info("Please upload a traffic data CSV file to begin.")
-
-if __name__ == "__main__":
-    main()
+    if st.button("Predict Traffic Volume"):
+        if 'model' not in locals():
+            model = train_model(X_train, y_train)
+        features = [temp, rain, clouds, hour, day, month, weekday, int(is_holiday)]
+        prediction = model.predict([features])[0]
+        st.success(f"Predicted Traffic Volume: {prediction:.0f} vehicles/hour")
+else:
+    st.info("Please upload a traffic data CSV file to get started.")
