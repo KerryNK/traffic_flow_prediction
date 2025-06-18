@@ -1,101 +1,60 @@
+import streamlit as st # type: ignore
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, r2_score
-import joblib
+import joblib # type: ignore
+from sklearn.ensemble import RandomForestRegressor # type: ignore
 
-# Set styling for plots
-plt.style.use('seaborn')
-sns.set_palette('husl')
-colors = sns.color_palette('husl', 8)
-
+# ------------------------------------
+# Traffic Predictor Class
+# ------------------------------------
 class TrafficPredictor:
-    def __init__(self, model_path='models/traffic_model.pkl'):
-        self.model_path = model_path
+    def __init__(self):
         self.model = None
-        self.feature_names = ['temp', 'rain_1h', 'clouds_all', 'hour', 'day']
+        self.features = ['temp', 'rain_1h', 'clouds_all', 'hour', 'day']
 
-    def train(self, data_path):
-        """Train the traffic prediction model"""
-        # Load and prepare data
-        df = pd.read_csv(data_path)
-        df['date_time'] = pd.to_datetime(df['date_time'])
-        df['hour'] = df['date_time'].dt.hour
-        df['day'] = df['date_time'].dt.day
+    def load_model(self, path='models/traffic_model.pkl'):
+        """Load a trained model from disk"""
+        self.model = joblib.load(path)
+        print(f"📥 Model loaded from {path}")
 
-        # Prepare features
-        X = df[self.feature_names]
-        y = df['traffic_volume']
-
-        # Split and train
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-        self.model = RandomForestRegressor(n_estimators=100)
-        self.model.fit(X_train, y_train)
-
-        # Make predictions
-        y_pred = self.model.predict(X_test)
-
-        # Visualize results
-        self._plot_predictions(y_test, y_pred)
-        self._plot_feature_importance()
-        
-        # Save model
-        joblib.dump(self.model, self.model_path)
-        
-        return r2_score(y_test, y_pred)
-
-    def predict(self, features):
-        """Make traffic prediction"""
+    def predict(self, feature_list: list) -> float:
+        """Predict traffic volume"""
         if not self.model:
-            self.model = joblib.load(self.model_path)
-        return self.model.predict([features])[0]
+            raise ValueError("Model not loaded.")
+        return self.model.predict([feature_list])[0]
 
-    def _plot_predictions(self, y_true, y_pred, samples=100):
-        """Plot actual vs predicted values"""
-        plt.figure(figsize=(12, 6))
-        plt.plot(y_true[:samples], label='Actual', color=colors[0], linewidth=2)
-        plt.plot(y_pred[:samples], label='Predicted', color=colors[1], linewidth=2, linestyle='--')
-        plt.fill_between(range(samples), y_true[:samples], y_pred[:samples], 
-                        alpha=0.2, color=colors[1])
-        plt.title('Traffic Volume: Actual vs Predicted', fontsize=14)
-        plt.xlabel('Sample Index', fontsize=12)
-        plt.ylabel('Traffic Volume', fontsize=12)
-        plt.legend(fontsize=10)
-        plt.grid(True, alpha=0.3)
-        plt.show()
+# ------------------------------------
+# Streamlit App
+# ------------------------------------
+st.set_page_config(page_title="Traffic Volume Predictor", layout="centered")
+st.title("🚦 Traffic Volume Predictor")
+st.markdown("Predict hourly traffic volume based on weather and time data. Built for **SDG 11: Sustainable Cities**.")
 
-    def _plot_feature_importance(self):
-        """Plot feature importance"""
-        importance = pd.DataFrame({
-            'feature': self.feature_names,
-            'importance': self.model.feature_importances_
-        }).sort_values('importance', ascending=True)
+# Load model
+predictor = TrafficPredictor()
+predictor.load_model()
 
-        plt.figure(figsize=(10, 6))
-        bars = plt.barh(importance['feature'], importance['importance'], 
-                       color=colors[2:])
-        plt.title('Feature Importance', fontsize=14)
-        plt.xlabel('Importance Score', fontsize=12)
-        
-        # Add value labels on bars
-        for bar in bars:
-            width = bar.get_width()
-            plt.text(width, bar.get_y() + bar.get_height()/2,
-                    f'{width:.3f}', ha='left', va='center')
-        plt.show()
+# UI Inputs
+temp = st.slider("🌡 Temperature (°C)", -10.0, 40.0, 25.0)
+rain_1h = st.slider("🌧 Rainfall (mm)", 0.0, 50.0, 0.0)
+clouds_all = st.slider("☁️ Cloud Coverage (%)", 0, 100, 20)
+hour = st.slider("🕓 Hour of Day", 0, 23, 14)
+day_name = st.selectbox("📅 Day of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 
-def main():
-    predictor = TrafficPredictor()
-    score = predictor.train('data/Metro_Interstate_Traffic_Volume.csv')
-    print(f"\nModel R² Score: {score:.3f}")
+# Map day to int
+day_map = {
+    "Monday": 0,
+    "Tuesday": 1,
+    "Wednesday": 2,
+    "Thursday": 3,
+    "Friday": 4,
+    "Saturday": 5,
+    "Sunday": 6
+}
+day = day_map[day_name]
 
-    # Example prediction
-    sample = [25.0, 0.0, 20, 8, 1]  # temp, rain, clouds, hour, day
-    prediction = predictor.predict(sample)
-    print(f"\nPredicted Traffic Volume: {prediction:.0f} vehicles/hour")
-
-if __name__ == "__main__":
-    main()
+# Predict
+if st.button("Predict Traffic Volume"):
+    features = [temp, rain_1h, clouds_all, hour, day]
+    result = predictor.predict(features)
+    st.success(f"🚗 Predicted Traffic Volume: **{int(result)} vehicles/hour**")
