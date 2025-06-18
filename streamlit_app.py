@@ -1,142 +1,151 @@
+from curses.ascii import alt
+import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error
 import joblib
-from pathlib import Path
-from datetime import datetime
-import logging
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.metrics import mean_absolute_error, r2_score
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 class TrafficPredictor:
-    def __init__(self, model_name="RandomForest"):
+    def __init__(self):
         self.model = None
         self.features = [
             'temp', 'rain_1h', 'clouds_all', 'hour', 'day',
             'month', 'weekday', 'is_holiday'
         ]
-        self.model_name = model_name
-        self.setup_logging()
-        self.setup_plotting()
 
-    def setup_logging(self):
-        logging.basicConfig(
-            filename=f'logs/traffic_prediction_{datetime.now():%Y%m%d}.log',
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s'
-        )
-        Path('logs').mkdir(exist_ok=True)
-
-    def setup_plotting(self):
-        plt.style.use('seaborn')
-        sns.set_context('notebook', font_scale=1.2)
-        self.colors = sns.color_palette('husl', 10)
-
-    def load_data(self, file_path: str) -> pd.DataFrame:
-        """Enhanced data loading with feature engineering"""
-        logging.info(f"Loading data from {file_path}")
-        df = pd.read_csv(file_path)
-        
-        # Time features
+    @st.cache_data
+    def load_data(self, file):
+        df = pd.read_csv(file)
         df['date_time'] = pd.to_datetime(df['date_time'])
         df['hour'] = df['date_time'].dt.hour
         df['day'] = df['date_time'].dt.day
         df['month'] = df['date_time'].dt.month
         df['weekday'] = df['date_time'].dt.weekday
-        
-        # Holiday feature
         df['is_holiday'] = df['holiday'].apply(lambda x: 1 if x != 'None' else 0)
-        
-        # Weather normalization
-        df['temp'] = (df['temp'] - df['temp'].mean()) / df['temp'].std()
-        
-        logging.info(f"Loaded dataset with shape: {df.shape}")
         return df
 
-    def train_model(self, df: pd.DataFrame) -> tuple:
-        """Train with cross-validation and feature importance"""
-        logging.info("Starting model training")
-        X = df[self.features]
-        y = df['traffic_volume']
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
-
+    @st.cache_resource
+    def train_model(self, X, y):
         self.model = RandomForestRegressor(
             n_estimators=100,
             max_depth=15,
-            min_samples_split=5,
-            random_state=42,
-            n_jobs=-1
+            random_state=42
         )
+        self.model.fit(X, y)
+        return self.model
 
-        # Cross-validation
-        cv_scores = cross_val_score(self.model, X_train, y_train, cv=5)
-        logging.info(f"Cross-validation scores: {cv_scores.mean():.3f} (±{cv_scores.std()*2:.3f})")
+    def load_model(self, model_path='models/traffic_model.pkl'):
+        self.model = joblib.load(model_path)
+        return self.model
 
-        self.model.fit(X_train, y_train)
-        y_pred = self.model.predict(X_test)
-
-        # Metrics
-        metrics = {
-            'R2': r2_score(y_test, y_pred),
-            'MAE': mean_absolute_error(y_test, y_pred),
-            'RMSE': np.sqrt(mean_squared_error(y_test, y_pred))
-        }
-        
-        logging.info(f"Model metrics: {metrics}")
-        return X_test, y_test, y_pred, metrics
-
-    def plot_results(self, y_true, y_pred, metrics):
-        """Enhanced visualizations with metrics"""
-        fig = plt.figure(figsize=(15, 12))
-        gs = fig.add_gridspec(3, 2)
-
-        # 1. Predictions vs Actual
-        ax1 = fig.add_subplot(gs[0, :])
-        ax1.plot(y_true[:100], label='Actual', color=self.colors[0], lw=2)
-        ax1.plot(y_pred[:100], label='Predicted', color=self.colors[1], lw=2, ls='--')
-        ax1.fill_between(range(100), y_true[:100], y_pred[:100], alpha=0.2, color=self.colors[1])
-        ax1.set_title('Traffic Volume: Actual vs Predicted')
-        ax1.legend()
-
-        # 2. Feature Importance
-        ax2 = fig.add_subplot(gs[1, 0])
-        importance = pd.DataFrame({
-            'feature': self.features,
-            'importance': self.model.feature_importances_
-        }).sort_values('importance', ascending=True)
-        sns.barplot(data=importance, y='feature', x='importance', ax=ax2, palette='husl')
-        ax2.set_title('Feature Importance')
-
-        # 3. Error Distribution
-        ax3 = fig.add_subplot(gs[1, 1])
-        errors = y_true - y_pred
-        sns.histplot(errors, kde=True, ax=ax3, color=self.colors[2])
-        ax3.set_title('Prediction Error Distribution')
-
-        # 4. Metrics Table
-        ax4 = fig.add_subplot(gs[2, :])
-        ax4.axis('off')
-        metrics_text = '\n'.join([f"{k}: {v:.3f}" for k, v in metrics.items()])
-        ax4.text(0.5, 0.5, f"Model Performance Metrics:\n\n{metrics_text}",
-                ha='center', va='center', fontsize=12)
-
-        plt.tight_layout()
-        plt.savefig('outputs/model_analysis.png', dpi=300, bbox_inches='tight')
-        plt.show()
+    def predict(self, features):
+        if not self.model:
+            raise ValueError("Model not loaded or trained.")
+        return self.model.predict([features])[0]
 
 def main():
-    # Create output directories
-    Path('outputs').mkdir(exist_ok=True)
-    Path('models').mkdir(exist_ok=True)
-    
-    # Initialize and run
+    st.set_page_config(page_title="Traffic Flow Prediction", layout="wide")
+    st.title("🚗 Traffic Flow Prediction System")
+
     predictor = TrafficPredictor()
-    df = predictor.load_data('data/Metro_Interstate_Traffic_Volume.csv')
-    X_test, y_test, y_pred, metrics = predictor.train_model(df)
-    predictor.plot_results(y_test, y_pred, metrics)
+
+    # Sidebar
+    st.sidebar.header("Model Controls")
+    uploaded_file = st.sidebar.file_uploader("Upload Traffic Data (CSV)", type="csv")
+
+    if uploaded_file:
+        df = predictor.load_data(uploaded_file)
+        st.sidebar.success("Data loaded successfully!")
+
+        # Training section
+        st.header("📊 Data Overview")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.dataframe(df.head())
+        with col2:
+            st.write("Dataset Shape:", df.shape)
+
+        # Model training
+        X = df[predictor.features]
+        y = df['traffic_volume']
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+        if st.sidebar.button("Train Model"):
+            with st.spinner("Training model..."):
+                model = predictor.train_model(X_train, y_train)
+                y_pred = model.predict(X_test)
+
+                #Show model performance metrics
+                mae = mean_absolute_error(y_test, y_pred)
+                r2 = r2_score(y_test, y_pred)
+
+                col1, col2 = st.columns(2)
+                col1.metric("📊 Mean Absolute Error (MAE)", f"{mae:.2f}")
+                col2.metric("📈 R² Score", f"{r2:.2f}")
+
+
+                # Visualizations
+                st.header("📈 Model Performance")
+
+                # Actual vs Predicted
+                fig1 = go.Figure()
+                fig1.add_trace(go.Scatter(y=y_test[:100], name="Actual"))
+                fig1.add_trace(go.Scatter(y=y_pred[:100], name="Predicted"))
+                fig1.update_layout(title="Traffic Volume: Actual vs Predicted")
+                st.plotly_chart(fig1)
+
+                # Feature Importance
+                importance = pd.DataFrame({
+                    'feature': predictor.features,
+                    'importance': model.feature_importances_
+                }).sort_values('importance', ascending=True)
+
+                fig2 = px.bar(importance, x='importance', y='feature',
+                             title="Feature Importance")
+                st.plotly_chart(fig2)
+
+                # Save model
+                joblib.dump(model, 'models/traffic_model.pkl')
+                st.sidebar.success("Model trained and saved successfully!")
+
+        # Prediction section
+        st.header("🎯 Make Predictions")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            temp = st.slider("🌡 Temperature (°C)", -20.0, 40.0, 20.0)
+            rain = st.slider("🌧 Rain (mm)", 0.0, 50.0, 0.0)
+            clouds = st.slider("☁️ Cloud Coverage (%)", 0, 100, 50)
+            hour = st.slider("🕓 Hour", 0, 23, 12)
+
+        with col2:
+            day = st.slider("📅 Day", 1, 31, 15)
+            month = st.slider("📆 Month", 1, 12, 6)
+            weekday = st.slider("🗓 Weekday", 0, 6, 3)
+            is_holiday = st.checkbox("🎉 Is Holiday")
+
+        if st.button("Predict"):
+            try:
+                predictor.load_model()
+                features = [temp, rain, clouds, hour, day, month, weekday, int(is_holiday)]
+                prediction = predictor.predict(features)
+                st.success(f"Predicted Traffic Volume: {prediction:.0f} vehicles/hour")
+            except Exception as e:
+                st.error(f"Prediction failed: {e}")
+    else:
+        st.info("Please upload a traffic data CSV file to begin.")
+
+        if st.checkbox("📌 Show Correlation Heatmap"):
+           st.subheader("Feature Correlation Matrix")
+           fig_corr, ax = plt.subplots(figsize=(10, 8))
+           sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
+    st.pyplot(fig_corr)
 
 if __name__ == "__main__":
     main()
